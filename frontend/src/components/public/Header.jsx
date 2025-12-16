@@ -25,6 +25,7 @@ import {
   Bell,
   Shield,
   ExternalLink,
+  Workflow 
 } from "lucide-react";
 
 const Header = () => {
@@ -110,7 +111,7 @@ const Header = () => {
     {
       label: "Careers",
       path: "/careers",
-      icon: <Images size={18} />,
+      icon: <Workflow size={18} />,
     },
     {
       label: "Contact",

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/public/Header";
 import Footer from "../components/public/Footer";
+import toast from "react-hot-toast";
 import {
   Search,
   MapPin,
@@ -46,250 +47,87 @@ import {
   ExternalLink,
 } from "lucide-react";
 
+// Import API service
+import API from "../services/api";
+
 const Careers = () => {
+  // State for filters and search
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // State for job selection and application
   const [selectedJob, setSelectedJob] = useState(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // State for fetched job openings
+  const [jobOpenings, setJobOpenings] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Application form data
   const [applicationData, setApplicationData] = useState({
     name: "",
     email: "",
     phone: "",
     linkedin: "",
+    github: "",
     portfolio: "",
     experience: "",
     coverLetter: "",
+    resume: null,
   });
 
-  // Job categories
-  const categories = [
-    { id: "all", label: "All Roles", count: 24, icon: Briefcase },
-    { id: "engineering", label: "Engineering", count: 12, icon: Code },
-    { id: "design", label: "Design", count: 4, icon: Palette },
-    { id: "product", label: "Product", count: 3, icon: Target },
-    { id: "data", label: "Data Science", count: 3, icon: Brain },
-    { id: "marketing", label: "Marketing", count: 2, icon: TrendingUp },
-  ];
+  // Fetch job openings and departments on component mount
+  useEffect(() => {
+    fetchJobData();
+  }, []);
 
-  // Job openings data
-  const jobOpenings = [
-    {
-      id: 1,
-      title: "Senior Frontend Developer",
-      department: "engineering",
-      type: "Full-time",
-      location: "Remote",
-      experience: "5+ years",
-      salary: "$12,000 - $16,000",
-      posted: "2 days ago",
-      description:
-        "Build cutting-edge user interfaces using React, TypeScript, and modern web technologies.",
-      skills: ["React", "TypeScript", "Next.js", "Tailwind CSS", "GraphQL"],
-      urgent: true,
-      featured: false,
+  /**
+   * Fetch job openings and departments from API
+   */
+  const fetchJobData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch job openings
+      const openings = await API.getJobOpenings();
+      setJobOpenings(openings || []);
+      
+      // Fetch departments
+      const depts = await API.getDepartments();
+      setDepartments(depts || []);
+      
+    } catch (error) {
+      console.error("Error fetching job data:", error);
+      toast.error("Failed to load job openings. Please refresh the page.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Job categories - generated dynamically from fetched data
+  const categories = [
+    { id: "all", label: "All Roles", count: jobOpenings.length, icon: Briefcase },
+    { id: "engineering", label: "Engineering", 
+      count: jobOpenings.filter(j => j.department === "engineering").length, 
+      icon: Code 
     },
-    {
-      id: 2,
-      title: "UX/UI Designer",
-      department: "design",
-      type: "Full-time",
-      location: "Remote",
-      experience: "3+ years",
-      salary: "$90,000 - $130,000",
-      posted: "1 week ago",
-      description:
-        "Create beautiful and intuitive user experiences for our product suite.",
-      skills: [
-        "Figma",
-        "UI/UX Design",
-        "Prototyping",
-        "User Research",
-        "Design Systems",
-      ],
-      urgent: false,
-      featured: false,
+    { id: "design", label: "Design", 
+      count: jobOpenings.filter(j => j.department === "design").length, 
+      icon: Palette 
     },
-    {
-      id: 3,
-      title: "DevOps Engineer",
-      department: "engineering",
-      type: "Full-time",
-      location: "Remote",
-      experience: "4+ years",
-      salary: "$130,000 - $170,000",
-      posted: "3 days ago",
-      description: "Manage cloud infrastructure and CI/CD pipelines on AWS.",
-      skills: ["AWS", "Docker", "Kubernetes", "Terraform", "CI/CD"],
-      urgent: true,
-      featured: false,
+    { id: "product", label: "Product", 
+      count: jobOpenings.filter(j => j.department === "product").length, 
+      icon: Target 
     },
-    {
-      id: 4,
-      title: "Data Scientist",
-      department: "data",
-      type: "Full-time",
-      location: "Remote",
-      experience: "3+ years",
-      salary: "$110,000 - $150,000",
-      posted: "2 weeks ago",
-      description:
-        "Apply machine learning models to solve complex business problems.",
-      skills: [
-        "Python",
-        "Machine Learning",
-        "SQL",
-        "TensorFlow",
-        "Data Analysis",
-      ],
-      urgent: false,
-      featured: false,
+    { id: "data", label: "Data Science", 
+      count: jobOpenings.filter(j => j.department === "data").length, 
+      icon: Brain 
     },
-    {
-      id: 5,
-      title: "Product Manager",
-      department: "product",
-      type: "Full-time",
-      location: "Remote",
-      experience: "4+ years",
-      salary: "$130,000 - $180,000",
-      posted: "5 days ago",
-      description:
-        "Lead product strategy and development for our flagship products.",
-      skills: [
-        "Product Strategy",
-        "Agile",
-        "User Stories",
-        "Roadmapping",
-        "Analytics",
-      ],
-      urgent: false,
-      featured: false,
-    },
-    {
-      id: 6,
-      title: "Backend Developer (Node.js)",
-      department: "engineering",
-      type: "Full-time",
-      location: "Remote",
-      experience: "3+ years",
-      salary: "$100,000 - $140,000",
-      posted: "1 week ago",
-      description: "Build scalable microservices and APIs for our platform.",
-      skills: ["Node.js", "PostgreSQL", "Redis", "Microservices", "REST APIs"],
-      urgent: true,
-      featured: false,
-    },
-    {
-      id: 7,
-      title: "Mobile Developer",
-      department: "engineering",
-      type: "Full-time",
-      location: "Remote",
-      experience: "3+ years",
-      salary: "$95,000 - $135,000",
-      posted: "3 days ago",
-      description:
-        "Develop cross-platform mobile applications using React Native.",
-      skills: ["React Native", "iOS", "Android", "TypeScript", "Mobile UI"],
-      urgent: false,
-      featured: false,
-    },
-    {
-      id: 8,
-      title: "Technical Writer",
-      department: "engineering",
-      type: "Contract",
-      location: "Remote",
-      experience: "2+ years",
-      salary: "$70,000 - $90,000",
-      posted: "2 weeks ago",
-      description: "Create technical documentation and developer guides.",
-      skills: [
-        "Technical Writing",
-        "API Documentation",
-        "Markdown",
-        "Git",
-        "Developer Tools",
-      ],
-      urgent: false,
-      featured: false,
-    },
-    {
-      id: 9,
-      title: "Security Engineer",
-      department: "engineering",
-      type: "Full-time",
-      location: "Remote",
-      experience: "5+ years",
-      salary: "$140,000 - $190,000",
-      posted: "4 days ago",
-      description:
-        "Implement and maintain security protocols for our infrastructure.",
-      skills: [
-        "Cybersecurity",
-        "AWS Security",
-        "Penetration Testing",
-        "SIEM",
-        "Compliance",
-      ],
-      urgent: true,
-      featured: false,
-    },
-    {
-      id: 10,
-      title: "QA Engineer",
-      department: "engineering",
-      type: "Full-time",
-      location: "Remote",
-      experience: "3+ years",
-      salary: "$85,000 - $115,000",
-      posted: "1 week ago",
-      description:
-        "Ensure product quality through automated and manual testing.",
-      skills: [
-        "Test Automation",
-        "Selenium",
-        "Jest",
-        "Cypress",
-        "QA Processes",
-      ],
-      urgent: false,
-      featured: false,
-    },
-    {
-      id: 11,
-      title: "Growth Marketing Manager",
-      department: "marketing",
-      type: "Full-time",
-      location: "Remote",
-      experience: "4+ years",
-      salary: "$95,000 - $130,000",
-      posted: "2 weeks ago",
-      description:
-        "Drive user acquisition and retention through data-driven marketing.",
-      skills: [
-        "Digital Marketing",
-        "SEO/SEM",
-        "Growth Hacking",
-        "Analytics",
-        "A/B Testing",
-      ],
-      urgent: false,
-      featured: false,
-    },
-    {
-      id: 12,
-      title: "AI/ML Engineer",
-      department: "data",
-      type: "Full-time",
-      location: "Remote",
-      experience: "4+ years",
-      salary: "$135,000 - $175,000",
-      posted: "6 days ago",
-      description: "Develop and deploy machine learning models at scale.",
-      skills: ["Python", "PyTorch", "MLOps", "Deep Learning", "NLP"],
-      urgent: true,
-      featured: false,
+    { id: "marketing", label: "Marketing", 
+      count: jobOpenings.filter(j => j.department === "marketing").length, 
+      icon: TrendingUp 
     },
   ];
 
@@ -405,7 +243,9 @@ const Careers = () => {
     },
   ];
 
-  // Filter jobs based on category and search
+  /**
+   * Filter jobs based on category and search query
+   */
   const filteredJobs = jobOpenings.filter((job) => {
     const matchesCategory =
       activeFilter === "all" || job.department === activeFilter;
@@ -413,38 +253,181 @@ const Careers = () => {
       searchQuery === "" ||
       job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       job.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.skills.some((skill) =>
+      (job.skills && job.skills.some((skill) =>
         skill.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      ));
 
     return matchesCategory && matchesSearch;
   });
 
-  // Handle job application
+  /**
+   * Handle job application button click
+   */
   const handleApply = (job) => {
     setSelectedJob(job);
     setShowApplicationForm(true);
   };
 
-  const handleApplicationSubmit = (e) => {
-    e.preventDefault();
-    console.log("Application submitted:", {
-      job: selectedJob,
-      ...applicationData,
-    });
-    alert(
-      `Thank you for applying to ${selectedJob.title}! We'll review your application and get back to you soon.`
-    );
-    setShowApplicationForm(false);
+  /**
+   * Reset application form
+   */
+  const resetForm = () => {
     setApplicationData({
       name: "",
       email: "",
       phone: "",
       linkedin: "",
+      github: "",
       portfolio: "",
       experience: "",
       coverLetter: "",
+      resume: null,
     });
+    setShowApplicationForm(false);
+    setSelectedJob(null);
+  };
+
+  /**
+   * Handle application form submission
+   */
+  const handleApplicationSubmit = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Validation
+    if (!API.validateEmail(applicationData.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    
+    if (!API.validatePhone(applicationData.phone)) {
+      toast.error("Please enter a valid phone number");
+      return;
+    }
+    
+    if (!applicationData.resume) {
+      toast.error("Please upload your resume");
+      return;
+    }
+
+    // Validate resume file
+    const fileValidation = API.Utils.validateResumeFile(applicationData.resume, 5);
+    if (!fileValidation.valid) {
+      toast.error(fileValidation.error);
+      return;
+    }
+
+    setIsSubmitting(true);
+    console.log("🚀 Submitting application...");
+
+    try {
+      // Prepare form data
+      const formData = API.Utils.createFormData({
+        full_name: applicationData.name,
+        email: applicationData.email,
+        phone: applicationData.phone,
+        linkedin_url: applicationData.linkedin || '',
+        github_url: applicationData.github || '',
+        portfolio_url: applicationData.portfolio || '',
+        years_of_experience: applicationData.experience || '',
+        cover_letter: applicationData.coverLetter || '',
+        job_title: selectedJob?.title || 'General Application',
+        job_type: (selectedJob?.type || 'full_time').toLowerCase().replace('-', '_'),
+        department: selectedJob?.department || '',
+      }, applicationData.resume);
+
+      console.log("📋 FormData fields:");
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}: ${value instanceof File ? value.name + ` (${value.size} bytes)` : value}`);
+      }
+
+      // Submit using API
+      const result = await API.submitApplication(formData);
+      
+      // Success message
+      toast.success(
+        <div className="text-left">
+          <p className="font-bold text-lg">✅ Application Submitted Successfully!</p>
+          <p className="mt-1">Application ID: <span className="font-mono font-bold">{result.application_id}</span></p>
+          <p className="text-sm mt-2">We've received your application and will contact you soon.</p>
+        </div>,
+        { duration: 10000 }
+      );
+
+      // Reset form
+      resetForm();
+      
+    } catch (error) {
+      console.error("❌ Submission error:", error);
+      
+      // Show detailed error message
+      const errorMessage = error.message || 
+                          error.detail || 
+                          "Failed to submit application. Please try again.";
+      
+      toast.error(
+        <div className="text-left">
+          <p className="font-bold">❌ Application Failed</p>
+          <p className="text-sm mt-1">{errorMessage}</p>
+          <p className="text-xs mt-2">Please check your details and try again.</p>
+        </div>
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /**
+   * Handle file selection
+   */
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const validation = API.Utils.validateResumeFile(file, 5);
+      if (!validation.valid) {
+        toast.error(validation.error);
+        e.target.value = "";
+        return;
+      }
+      setApplicationData({ ...applicationData, resume: file });
+      toast.success(`Resume uploaded: ${file.name}`);
+    }
+  };
+
+  /**
+   * Get department icon based on department name
+   */
+  const getDepartmentIcon = (department) => {
+    const icons = {
+      engineering: Code,
+      design: Palette,
+      product: Target,
+      data: Brain,
+      marketing: TrendingUp,
+    };
+    return icons[department] || Briefcase;
+  };
+
+  /**
+   * Get department display name
+   */
+  const getDepartmentName = (department) => {
+    const names = {
+      engineering: "Engineering",
+      design: "Design",
+      product: "Product",
+      data: "Data Science",
+      marketing: "Marketing",
+    };
+    return names[department] || department;
+  };
+
+  /**
+   * Format date to relative time
+   */
+  const formatRelativeTime = (dateString) => {
+    if (!dateString) return "Recently";
+    return API.Utils.timeAgo(dateString);
   };
 
   return (
@@ -498,15 +481,17 @@ const Careers = () => {
               {/* Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto mt-16">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white mb-2">100+</div>
+                  <div className="text-3xl font-bold text-white mb-2">25+</div>
                   <div className="text-white/80 text-sm">Team Members</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white mb-2">24</div>
+                  <div className="text-3xl font-bold text-white mb-2">
+                    {jobOpenings.length}
+                  </div>
                   <div className="text-white/80 text-sm">Open Positions</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white mb-2">15+</div>
+                  <div className="text-3xl font-bold text-white mb-2">3+</div>
                   <div className="text-white/80 text-sm">Countries</div>
                 </div>
                 <div className="text-center">
@@ -702,123 +687,129 @@ const Careers = () => {
               </div>
             </div>
 
-            {/* Jobs Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filteredJobs.map((job) => (
-                <div
-                  key={job.id}
-                  className="group relative bg-white rounded-2xl border border-gray-200 p-6 hover:border-purple-300 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-                >
-                  {/* Featured Badge */}
-                  {job.featured && (
-                    <div className="absolute top-4 right-4 px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-bold rounded-full">
-                      Featured
-                    </div>
-                  )}
-
-                  {/* Urgent Badge */}
-                  {job.urgent && (
-                    <div className="absolute top-4 left-4 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
-                      Urgent
-                    </div>
-                  )}
-
-                  <div className="flex flex-col md:flex-row md:items-start gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-                      {job.department === "engineering" && (
-                        <Code className="text-purple-600" size={24} />
-                      )}
-                      {job.department === "design" && (
-                        <Palette className="text-purple-600" size={24} />
-                      )}
-                      {job.department === "product" && (
-                        <Target className="text-purple-600" size={24} />
-                      )}
-                      {job.department === "data" && (
-                        <Brain className="text-purple-600" size={24} />
-                      )}
-                      {job.department === "marketing" && (
-                        <TrendingUp className="text-purple-600" size={24} />
-                      )}
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-2 mb-3">
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900 group-hover:text-purple-700">
-                            {job.title}
-                          </h3>
-                          <p className="text-gray-600 text-sm mt-1">
-                            {job.description}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-gray-900">
-                            {job.salary}
-                          </div>
-                          <div className="text-gray-500 text-sm">per year</div>
-                        </div>
-                      </div>
-
-                      {/* Job Details */}
-                      <div className="flex flex-wrap gap-4 mb-4">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <MapPin size={16} />
-                          <span className="text-sm">{job.location}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Briefcase size={16} />
-                          <span className="text-sm">{job.type}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Clock size={16} />
-                          <span className="text-sm">{job.experience}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Award size={16} />
-                          <span className="text-sm">Posted {job.posted}</span>
-                        </div>
-                      </div>
-
-                      {/* Skills */}
-                      <div className="flex flex-wrap gap-2 mb-6">
-                        {job.skills.map((skill, idx) => (
-                          <span
-                            key={idx}
-                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => handleApply(job)}
-                          className="flex-1 group/btn bg-gradient-to-r from-blue-500 to-blue-500 text-white py-3 rounded-xl font-semibold hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 hover:-translate-y-0.5 flex items-center justify-center gap-2"
-                        >
-                          Apply Now
-                          <ChevronRight
-                            className="group-hover/btn:translate-x-1 transition-transform"
-                            size={16}
-                          />
-                        </button>
-                        <button
-                          onClick={() => setSelectedJob(job)}
-                          className="h-12 w-12 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
-                        >
-                          <ExternalLink size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+            {/* Loading State */}
+            {isLoading && (
+              <div className="text-center py-16">
+                <div className="h-20 w-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4 animate-pulse">
+                  <Clock className="text-gray-400" size={32} />
                 </div>
-              ))}
-            </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  Loading Job Openings...
+                </h3>
+                <p className="text-gray-600">
+                  Fetching the latest opportunities for you
+                </p>
+              </div>
+            )}
+
+            {/* Jobs Grid */}
+            {!isLoading && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredJobs.map((job) => {
+                  const DepartmentIcon = getDepartmentIcon(job.department);
+                  
+                  return (
+                    <div
+                      key={job.id}
+                      className="group relative bg-white rounded-2xl border border-gray-200 p-6 hover:border-purple-300 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                    >
+                      {/* Urgent Badge */}
+                      {job.urgent && (
+                        <div className="absolute top-4 left-4 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+                          Urgent
+                        </div>
+                      )}
+
+                      <div className="flex flex-col md:flex-row md:items-start gap-4">
+                        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
+                          <DepartmentIcon className="text-purple-600" size={24} />
+                        </div>
+
+                        <div className="flex-1">
+                          <div className="flex flex-col md:flex-row md:items-start justify-between gap-2 mb-3">
+                            <div>
+                              <h3 className="text-xl font-bold text-gray-900 group-hover:text-purple-700">
+                                {job.title}
+                              </h3>
+                              <p className="text-gray-600 text-sm mt-1">
+                                {job.description}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-gray-900">
+                                {job.salary}
+                              </div>
+                              <div className="text-gray-500 text-sm">per year</div>
+                            </div>
+                          </div>
+
+                          {/* Job Details */}
+                          <div className="flex flex-wrap gap-4 mb-4">
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <MapPin size={16} />
+                              <span className="text-sm">{job.location}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Briefcase size={16} />
+                              <span className="text-sm">
+                                {getDepartmentName(job.department)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Clock size={16} />
+                              <span className="text-sm">{job.experience}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Award size={16} />
+                              <span className="text-sm">
+                                Posted {formatRelativeTime(job.posted)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Skills */}
+                          {job.skills && job.skills.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-6">
+                              {job.skills.map((skill, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => handleApply(job)}
+                              className="flex-1 group/btn bg-gradient-to-r from-blue-500 to-blue-500 text-white py-3 rounded-xl font-semibold hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                            >
+                              Apply Now
+                              <ChevronRight
+                                className="group-hover/btn:translate-x-1 transition-transform"
+                                size={16}
+                              />
+                            </button>
+                            <button
+                              onClick={() => setSelectedJob(job)}
+                              className="h-12 w-12 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                            >
+                              <ExternalLink size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* No Results */}
-            {filteredJobs.length === 0 && (
+            {!isLoading && filteredJobs.length === 0 && (
               <div className="text-center py-16">
                 <div className="h-20 w-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
                   <Search className="text-gray-400" size={32} />
@@ -924,6 +915,7 @@ const Careers = () => {
                   setSelectedJob({
                     title: "General Application",
                     department: "general",
+                    type: "full_time",
                   });
                   setShowApplicationForm(true);
                 }}
@@ -964,12 +956,12 @@ const Careers = () => {
       </main>
 
       <Footer />
+
       {/* Application Form Modal */}
       {showApplicationForm && selectedJob && (
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           onClick={(e) => {
-            // Only close if clicking on the backdrop, not the modal content
             if (e.target === e.currentTarget) {
               setShowApplicationForm(false);
             }
@@ -977,10 +969,7 @@ const Careers = () => {
         >
           <div className="relative bg-white rounded-3xl w-full max-w-2xl p-8 shadow-2xl z-[10000] max-h-[90vh] overflow-y-auto">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowApplicationForm(false);
-              }}
+              onClick={() => setShowApplicationForm(false)}
               className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-50"
             >
               <X size={20} />
@@ -1084,22 +1073,48 @@ const Careers = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Portfolio / GitHub
-                </label>
-                <input
-                  type="url"
-                  value={applicationData.portfolio}
-                  onChange={(e) =>
-                    setApplicationData({
-                      ...applicationData,
-                      portfolio: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="github.com/username or portfolio.com"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    GitHub Profile
+                  </label>
+                  <div className="relative">
+                    <Code
+                      className="absolute left-3 top-3 text-gray-400"
+                      size={18}
+                    />
+                    <input
+                      type="url"
+                      value={applicationData.github}
+                      onChange={(e) =>
+                        setApplicationData({
+                          ...applicationData,
+                          github: e.target.value,
+                        })
+                      }
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="github.com/username"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Portfolio Website
+                  </label>
+                  <input
+                    type="url"
+                    value={applicationData.portfolio}
+                    onChange={(e) =>
+                      setApplicationData({
+                        ...applicationData,
+                        portfolio: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="portfolio.com"
+                  />
+                </div>
               </div>
 
               <div>
@@ -1126,41 +1141,65 @@ const Careers = () => {
                 </select>
               </div>
 
+              {/* Resume Upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Resume / CV *
                 </label>
                 <div className="relative border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-purple-400 transition-colors group cursor-pointer">
-                  <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3">
-                    <BookOpen className="text-purple-600" size={24} />
-                  </div>
-                  <p className="text-gray-600 mb-2">
-                    Drop your resume here or click to browse
-                  </p>
-                  <p className="text-gray-500 text-sm">
-                    PDF, DOC, DOCX up to 5MB
-                  </p>
+                  {applicationData.resume ? (
+                    <div className="text-left">
+                      <div className="flex items-center gap-3">
+                        <BookOpen className="text-purple-600" size={24} />
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {applicationData.resume.name}
+                          </p>
+                          <p className="text-gray-500 text-sm">
+                            {API.Utils.formatFileSize(applicationData.resume.size)}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const fileInput = document.createElement('input');
+                          fileInput.type = 'file';
+                          fileInput.accept = '.pdf,.doc,.docx,.txt';
+                          fileInput.onchange = (e) => handleFileChange(e);
+                          fileInput.click();
+                        }}
+                        className="mt-3 text-sm text-purple-600 hover:text-purple-700"
+                      >
+                        Change File
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3">
+                        <BookOpen className="text-purple-600" size={24} />
+                      </div>
+                      <p className="text-gray-600 mb-2">
+                        Drop your resume here or click to browse
+                      </p>
+                      <p className="text-gray-500 text-sm">
+                        PDF, DOC, DOCX, TXT up to 5MB
+                      </p>
+                    </>
+                  )}
                   <input
                     type="file"
                     required
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    accept=".pdf,.doc,.docx"
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => {
-                      // Handle file selection
-                      const file = e.target.files[0];
-                      if (file) {
-                        console.log("File selected:", file.name);
-                        // You can add file validation here
-                      }
-                    }}
+                    accept=".pdf,.doc,.docx,.txt"
+                    onChange={handleFileChange}
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cover Letter
+                  Cover Letter (Optional)
                 </label>
                 <textarea
                   value={applicationData.coverLetter}
@@ -1176,15 +1215,14 @@ const Careers = () => {
                 />
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-start gap-2 text-sm text-gray-600">
                 <input
                   type="checkbox"
                   id="privacy"
                   required
-                  className="rounded"
-                  onClick={(e) => e.stopPropagation()}
+                  className="rounded mt-1"
                 />
-                <label htmlFor="privacy">
+                <label htmlFor="privacy" className="text-left">
                   I agree to the privacy policy and consent to my data being
                   processed for recruitment purposes.
                 </label>
@@ -1192,10 +1230,21 @@ const Careers = () => {
 
               <button
                 type="submit"
-                onClick={(e) => e.stopPropagation()}
-                className="w-full bg-gradient-to-r from-blue-500 to-pink-500 text-white py-3.5 rounded-xl font-semibold hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300"
+                disabled={isSubmitting}
+                className={`w-full bg-gradient-to-r from-blue-500 to-pink-500 text-white py-3.5 rounded-xl font-semibold transition-all duration-300 ${
+                  isSubmitting
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:shadow-xl hover:shadow-purple-500/30 hover:-translate-y-0.5"
+                }`}
               >
-                Submit Application
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Submitting...
+                  </span>
+                ) : (
+                  "Submit Application"
+                )}
               </button>
             </form>
           </div>

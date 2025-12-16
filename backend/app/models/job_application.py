@@ -1,19 +1,19 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Enum, Boolean
-from sqlalchemy.dialects.postgresql import ENUM
+from sqlalchemy import Column, Integer, String, Text, DateTime, Enum as SQLAlchemyEnum, Boolean
 from sqlalchemy.sql import func
 from datetime import datetime
 import enum
 from app.database import Base
 
-class JobType(enum.Enum):
-    FULL_TIME = "FULL_TIME"      
-    PART_TIME = "PART_TIME"      
-    CONTRACT = "CONTRACT"        
-    INTERNSHIP = "INTERNSHIP"    
-    REMOTE = "REMOTE"            
-    HYBRID = "HYBRID" 
+# Define enums with all lowercase values
+class JobType(str, enum.Enum):
+    FULL_TIME = "full_time"
+    PART_TIME = "part_time"
+    CONTRACT = "contract"
+    INTERNSHIP = "internship"
+    REMOTE = "remote"
+    HYBRID = "hybrid"
 
-class ApplicationStatus(enum.Enum):
+class ApplicationStatus(str, enum.Enum):
     PENDING = "pending"
     REVIEWED = "reviewed"
     SHORTLISTED = "shortlisted"
@@ -31,22 +31,22 @@ class JobApplication(Base):
     full_name = Column(String(200), nullable=False)
     email = Column(String(200), nullable=False, index=True)
     phone = Column(String(50), nullable=False)
-    linkedin_url = Column(String(500),nullable=True)
-    github_url = Column(String(500), nullable=True)
-    portfolio_url = Column(String(500),nullable=True)
+    linkedin_url = Column(String(500))
+    github_url = Column(String(500))
+    portfolio_url = Column(String(500))
     years_of_experience = Column(String(50))
     cover_letter = Column(Text)
     
     # Job Details
     job_title = Column(String(200), nullable=False)
-    job_type = Column(Enum(JobType), default=JobType.FULL_TIME)
+    job_type = Column(SQLAlchemyEnum(JobType), default=JobType.FULL_TIME)
     department = Column(String(100), index=True)
     
     # Application Files
     resume_path = Column(String(500), nullable=False)
     
     # Status
-    status = Column(Enum(ApplicationStatus), default=ApplicationStatus.PENDING)
+    status = Column(SQLAlchemyEnum(ApplicationStatus), default=ApplicationStatus.PENDING)
     
     # System Fields
     ip_address = Column(String(50))

@@ -1,6 +1,12 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
+  safelist: [
+    'bg-black/50',
+    'backdrop-blur-sm',
+    'inset-0',
+    'z-50',
+  ],
   theme: {
     extend: {
       animation: {

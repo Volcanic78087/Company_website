@@ -1,29 +1,37 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, status
 from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional,Dict
 import os
 import uuid
 from datetime import datetime, timedelta
 import traceback
+import json
 
 from app.database import get_db
-from app.models.job_application import JobApplication, ApplicationStatus
+from app.models.job_application import JobApplication, JobType, ApplicationStatus
 from app.schemas.job_application import (
     JobApplicationResponse,
     JobApplicationUpdate,
-    ApplicationStats
+    ApplicationStats,
+    JobType as SchemaJobType,
+    ApplicationStatus as SchemaApplicationStatus
 )
 from app.core.config import settings
 from app.core.utils import (
     save_uploaded_file, 
     generate_application_id,
+    generate_project_id,
     validate_file_by_extension,
     validate_file_size,
     get_client_ip,
     sanitize_filename
 )
 from sqlalchemy import func
+from app.models.project_request import ProjectRequest, ProjectStatus
+from app.schemas.project_request import ProjectRequestCreate, ProjectRequestResponse
+
+ProjectRequestResponse.model_rebuild(force=True)
 
 router = APIRouter()
 
@@ -104,6 +112,16 @@ async def submit_application(
         # Generate unique application ID
         application_id = generate_application_id()
         
+        # Validate and normalize job_type
+        job_type_lower = job_type.lower()
+        try:
+            # Convert string to enum
+            job_type_enum = JobType(job_type_lower)
+        except ValueError:
+            # If invalid, use default
+            job_type_enum = JobType.FULL_TIME
+            print(f"⚠️ Invalid job_type '{job_type}', defaulting to 'full_time'")
+        
         # Create application record
         application_data = {
             "full_name": full_name,
@@ -115,13 +133,13 @@ async def submit_application(
             "years_of_experience": years_of_experience,
             "cover_letter": cover_letter,
             "job_title": job_title,
-            "job_type": job_type,
+            "job_type": job_type_enum,
             "department": department,
             "resume_path": resume_path,
             "application_id": application_id,
             "ip_address": get_client_ip(request),
             "user_agent": request.headers.get("user-agent", ""),
-            "status": ApplicationStatus.PENDING.value
+            "status": ApplicationStatus.PENDING
         }
         
         print(f"📝 Creating database record: {application_id}")
@@ -165,7 +183,13 @@ async def get_applications(
             query = query.filter(JobApplication.department == department)
         
         if status:
-            query = query.filter(JobApplication.status == status)
+            # Convert string status to enum
+            try:
+                status_enum = ApplicationStatus(status.lower())
+                query = query.filter(JobApplication.status == status_enum)
+            except ValueError:
+                # If invalid status, ignore filter
+                print(f"⚠️ Invalid status filter: {status}")
         
         applications = query.order_by(JobApplication.created_at.desc()).offset(skip).limit(limit).all()
         return applications
@@ -220,6 +244,16 @@ async def update_application(
     # Update fields
     update_dict = update_data.dict(exclude_unset=True)
     for field, value in update_dict.items():
+        if field == 'status' and value:
+            # Convert string to enum if needed
+            if isinstance(value, str):
+                try:
+                    value = ApplicationStatus(value.lower())
+                except ValueError:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Invalid status value: {value}"
+                    )
         setattr(application, field, value)
     
     application.updated_at = datetime.now()
@@ -237,102 +271,29 @@ async def get_application_stats(db: Session = Depends(get_db)):
         # Total count
         total = db.query(JobApplication).filter(JobApplication.is_active == True).count()
         
-        # Count by status
+        # Count by status - use enum directly
         pending = db.query(JobApplication).filter(
-            JobApplication.status == ApplicationStatus.PENDING.value,
+            JobApplication.status == ApplicationStatus.PENDING,
             JobApplication.is_active == True
         ).count()
         
         reviewed = db.query(JobApplication).filter(
-            JobApplication.status == ApplicationStatus.REVIEWED.value,
+            JobApplication.status == ApplicationStatus.REVIEWED,
             JobApplication.is_active == True
         ).count()
         
         shortlisted = db.query(JobApplication).filter(
-            JobApplication.status == ApplicationStatus.SHORTLISTED.value,
+            JobApplication.status == ApplicationStatus.SHORTLISTED,
             JobApplication.is_active == True
         ).count()
         
         hired = db.query(JobApplication).filter(
-            JobApplication.status == ApplicationStatus.HIRED.value,
+            JobApplication.status == ApplicationStatus.HIRED,
             JobApplication.is_active == True
         ).count()
         
         rejected = db.query(JobApplication).filter(
-            JobApplication.status == ApplicationStatus.REJECTED.value,
-            JobApplication.is_active == True
-        ).count()
-        
-        # Get department counts
-        department_counts = {}
-        departments = db.query(
-            JobApplication.department, 
-            func.count(JobApplication.id)
-        ).filter(
-            JobApplication.department.isnot(None),
-            JobApplication.is_active == True
-        ).group_by(JobApplication.department).all()
-        
-        for dept, count in departments:
-            if dept:
-                department_counts[dept] = count
-        
-        # Get total applications (same as total)
-        total_applications = total
-        
-        # Return comprehensive stats
-        return ApplicationStats(
-            total=total,
-            pending=pending,
-            reviewed=reviewed,
-            shortlisted=shortlisted,
-            hired=hired,
-            rejected=rejected,
-            # Additional stats for frontend
-            total_team_members=124,  # Hardcoded for now
-            countries=18,
-            employee_rating=4.8,
-            total_applications=total_applications,
-            open_positions=24,
-            departments=department_counts
-        )
-        
-    except Exception as e:
-        print(f"❌ Error fetching statistics: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error fetching statistics: {str(e)}"
-        )
-    """
-    Get application statistics
-    """
-    try:
-        # Total count
-        total = db.query(JobApplication).filter(JobApplication.is_active == True).count()
-        
-        # Count by status
-        pending = db.query(JobApplication).filter(
-            JobApplication.status == ApplicationStatus.PENDING.value,
-            JobApplication.is_active == True
-        ).count()
-        
-        reviewed = db.query(JobApplication).filter(
-            JobApplication.status == ApplicationStatus.REVIEWED.value,
-            JobApplication.is_active == True
-        ).count()
-        
-        shortlisted = db.query(JobApplication).filter(
-            JobApplication.status == ApplicationStatus.SHORTLISTED.value,
-            JobApplication.is_active == True
-        ).count()
-        
-        hired = db.query(JobApplication).filter(
-            JobApplication.status == ApplicationStatus.HIRED.value,
-            JobApplication.is_active == True
-        ).count()
-        
-        rejected = db.query(JobApplication).filter(
-            JobApplication.status == ApplicationStatus.REJECTED.value,
+            JobApplication.status == ApplicationStatus.REJECTED,
             JobApplication.is_active == True
         ).count()
         
@@ -396,7 +357,7 @@ async def get_job_openings():
             "id": 1,
             "title": "Senior Frontend Developer",
             "department": "engineering",
-            "type": "Full-time",
+            "type": "full_time",
             "location": "Remote",
             "experience": "5+ years",
             "salary": "$12,000 - $16,000",
@@ -409,7 +370,7 @@ async def get_job_openings():
             "id": 2,
             "title": "UX/UI Designer",
             "department": "design",
-            "type": "Full-time",
+            "type": "full_time",
             "location": "Remote",
             "experience": "3+ years",
             "salary": "$90,000 - $130,000",
@@ -427,9 +388,211 @@ async def get_departments(db: Session = Depends(get_db)):
     """
     Get unique departments from applications
     """
-    departments = db.query(JobApplication.department).filter(
-        JobApplication.department.isnot(None),
-        JobApplication.is_active == True
-    ).distinct().all()
+    try:
+        departments = db.query(JobApplication.department).filter(
+            JobApplication.department.isnot(None),
+            JobApplication.is_active == True
+        ).distinct().all()
+        
+        # Filter out None values and return as list
+        return [dept[0] for dept in departments if dept[0]]
+    except Exception as e:
+        print(f"❌ Error fetching departments: {str(e)}")
+        return []
+
+
+@router.post("/projects/submit", response_model=ProjectRequestResponse, status_code=status.HTTP_201_CREATED)
+async def submit_project_request(
+    request: Request,
+    full_name: str = Form(...),
+    email: str = Form(...),
+    phone: str = Form(...),
+    company: Optional[str] = Form(None),
+    project_type: str = Form(...),
+    budget: Optional[str] = Form("Not specified"),
+    timeline: Optional[str] = Form("Not specified"),
+    description: str = Form(...),
+    technologies: str = Form("[]"),
+    files: List[UploadFile] = File([]),
+    db: Session = Depends(get_db)
+):
+    """
+    Submit a new project request
+    """
+    try:
+        print(f"📋 Received project request from: {full_name} ({email})")
+        
+        # Parse technologies JSON
+        try:
+            technologies_list = json.loads(technologies)
+        except:
+            technologies_list = []
+        
+        # Generate project ID
+        project_id = generate_project_id()
+        
+        # Save uploaded files
+        saved_files = []
+        for file in files:
+            if file.filename:
+                # Validate file
+                if not validate_file(file):
+                    continue
+                
+                # Generate unique filename
+                file_extension = os.path.splitext(file.filename)[1]
+                file_name = f"{uuid.uuid4()}{file_extension}"
+                
+                # Read file content
+                file_content = await file.read()
+
+                # Validate file size
+                if len(file_content) > 10 * 1024 * 1024:  # 10MB
+                    print(f"⚠️ File too large: {file.filename}")
+                    continue
+
+                
+                # Save file
+                file_path = save_uploaded_file(
+                    file_content,
+                    "project_docs",
+                    file_name
+                )
+                
+                saved_files.append({
+                    "original_name": file.filename,
+                    "saved_name": file_name,
+                    "path": file_path,
+                    "size": len(file_content)
+                })
+
+         # IMPORTANT: Convert saved_files to JSON string
+        # This is what fixes the "can't adapt type 'dict'" error
+        if saved_files:
+            attached_files_json = json.dumps(saved_files)
+        else:
+            attached_files_json = None
+        
+        # Create project request record
+        project_data = {
+            "project_id": project_id,
+            "full_name": full_name,
+            "email": email,
+            "phone": phone,
+            "company": company,
+            "project_type": project_type,
+            "budget": budget,
+            "timeline": timeline,
+            "description": description,
+            "technologies": json.dumps(technologies_list),
+            "attached_files": attached_files_json,
+            "ip_address": get_client_ip(request),
+            "user_agent": request.headers.get("user-agent", ""),
+            "status": ProjectStatus.NEW.value
+        }
+        
+        print(f"📝 Creating project record: {project_id}")
+        print(f"📎 Attached files (JSON): {attached_files_json}")
+        
+        # Create database record
+        db_project = ProjectRequest(**project_data)
+        db.add(db_project)
+        db.commit()
+        db.refresh(db_project)
+        
+        print(f"✅ Project request submitted: {project_id}")
+        
+        # Send notification email (you'll implement this)
+        # await send_project_notification_email(db_project)
+        
+        return db_project
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Error submitting project request: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error submitting project request: {str(e)}"
+        )
+
+def validate_file(file: UploadFile) -> bool:
+    """Validate uploaded file"""
+    allowed_types = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'text/plain',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ]
     
-    return [dept[0] for dept in departments if dept[0]]
+    max_size = 10 * 1024 * 1024  # 10MB
+    
+    # Check file type
+    if file.content_type not in allowed_types:
+        return False
+    
+    # We'll check size after reading (in the route)
+    return True
+
+@router.get("/projects", response_model=List[ProjectRequestResponse])
+async def get_project_requests(
+    skip: int = 0,
+    limit: int = 20,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Get all project requests (admin only)"""
+    query = db.query(ProjectRequest)
+    
+    if status:
+        query = query.filter(ProjectRequest.status == status)
+    
+    projects = query.order_by(ProjectRequest.created_at.desc()).offset(skip).limit(limit).all()
+    return projects
+
+@router.get("/projects/{project_id}", response_model=ProjectRequestResponse)
+async def get_project_request(
+    project_id: str,
+    db: Session = Depends(get_db)
+):
+    """Get specific project request"""
+    project = db.query(ProjectRequest).filter(ProjectRequest.project_id == project_id).first()
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project request not found"
+        )
+    
+    return project
+
+@router.patch("/projects/{project_id}")
+async def update_project_status(
+    project_id: str,
+    status: str = Form(...),
+    notes: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
+    """Update project status (admin only)"""
+    project = db.query(ProjectRequest).filter(ProjectRequest.project_id == project_id).first()
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project request not found"
+        )
+    
+    # Update status
+    project.status = status
+    project.notes = notes
+    project.updated_at = datetime.now()
+    
+    db.commit()
+    db.refresh(project)
+    
+    return {"message": "Project status updated successfully", "project": project}

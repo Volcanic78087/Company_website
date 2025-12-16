@@ -151,3 +151,12 @@ def create_directories():
 
 # Create directories on import
 create_directories()
+
+def generate_project_id() -> str:
+    """
+    Generate unique application ID
+    Format: PROJ-YYYYMMDD-XXXXX
+    """
+    date_str = datetime.now().strftime("%Y%m%d")
+    random_str = uuid.uuid4().hex[:5].upper()
+    return f"PROJ-{date_str}-{random_str}"

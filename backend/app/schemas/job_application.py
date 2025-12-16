@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import datetime
 from enum import Enum
 
+# Define enums with all lowercase values
 class JobType(str, Enum):
     FULL_TIME = "full_time"
     PART_TIME = "part_time"
@@ -11,23 +12,14 @@ class JobType(str, Enum):
     REMOTE = "remote"
     HYBRID = "hybrid"
 
-class ApplicationStats(BaseModel):
-    total: int
-    pending: int
-    reviewed: int
-    shortlisted: int
-    hired: int
-    rejected: int
-    # Add these fields for frontend compatibility
-    total_team_members: Optional[int] = None
-    countries: Optional[int] = None
-    employee_rating: Optional[float] = None
-    total_applications: Optional[int] = None
-    open_positions: Optional[int] = None
-    departments: Optional[Dict[str, int]] = None
-    
-    class Config:
-        from_attributes = True
+class ApplicationStatus(str, Enum):
+    PENDING = "pending"
+    REVIEWED = "reviewed"
+    SHORTLISTED = "shortlisted"
+    INTERVIEW_SCHEDULED = "interview_scheduled"
+    REJECTED = "rejected"
+    HIRED = "hired"
+    WITHDRAWN = "withdrawn"
 
 # Schema for creating application (from frontend)
 class JobApplicationCreate(BaseModel):

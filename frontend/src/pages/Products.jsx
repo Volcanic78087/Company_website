@@ -1,58 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/public/Header";
 import Footer from "../components/public/Footer";
+import ProductInquiryForm from "../components/common/ProductInquiryForm";
+import FreeTrialForm from "../components/common/FreeTrialForm";
 import {
-  ShoppingCart,
-  Star,
-  TrendingUp,
-  Users,
-  Zap,
-  Shield,
-  Globe,
-  BarChart,
-  CheckCircle,
-  ArrowRight,
-  Download,
-  Sparkles,
-  Rocket,
-  Target,
-  PieChart,
-  Server,
-  GitBranch,
-  BookOpen,
-  Clock,
-  Award,
-  ShieldCheck,
-  Cpu,
-  Database,
-  Cloud,
-  Bell,
-  TrendingDown,
-  Filter,
-  Heart,
-  Eye,
-  Share2,
-  ChevronRight,
-  Play,
-  X,
-  Menu,
-  Mail,
-  Phone,
-  Building,
-  User,
+  ShoppingCart, Star, TrendingUp, Users, Zap, Shield, Globe, BarChart,
+  CheckCircle, ArrowRight, Download, Sparkles, Rocket, Target, PieChart,
+  Server, GitBranch, BookOpen, Clock, Award, ShieldCheck, Cpu, Database,
+  Cloud, Bell, TrendingDown, Filter, Heart, Eye, Share2, ChevronRight,
+  Play, X, Menu,
 } from "lucide-react";
 
 const Products = () => {
   const [activeCategory, setActiveCategory] = useState("all");
   const [hoveredProduct, setHoveredProduct] = useState(null);
-  const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // New states for forms
+  // Form visibility states
   const [showProductForm, setShowProductForm] = useState(false);
   const [showTrialForm, setShowTrialForm] = useState(false);
   const [currentProduct, setCurrentProduct] = useState(null);
 
-  // Form states
+  // Form data states
   const [productFormData, setProductFormData] = useState({
     name: "",
     email: "",
@@ -72,56 +40,35 @@ const Products = () => {
     timeline: "",
   });
 
-  // Handle Get Started button click
-  const handleGetStarted = (product) => {
-    setCurrentProduct(product);
-    setProductFormData((prev) => ({
-      ...prev,
-      product: product.name,
-    }));
-    setShowProductForm(true);
-  };
-
-  // Handle Start Free Trial button click
+  // Fixed: Proper handling of Get Started
+ const handleGetStarted = (product) => {
+  
+  setCurrentProduct(product);
+  setProductFormData(prev => ({ ...prev, product: product.name }));
+  setShowProductForm(true);
+};
   const handleStartTrial = () => {
     setShowTrialForm(true);
   };
 
-  // Handle form submissions
   const handleProductFormSubmit = (e) => {
     e.preventDefault();
-    console.log("Product Form Submitted:", productFormData);
-    // Here you would typically send the data to your backend
-    alert(
-      `Thank you for your interest in ${productFormData.product}! We'll contact you soon.`
-    );
+    console.log("Product Inquiry Submitted:", productFormData);
+    alert(`Thank you for your interest in ${productFormData.product}! We'll contact you soon.`);
     setShowProductForm(false);
     setProductFormData({
-      name: "",
-      email: "",
-      phone: "",
-      company: "",
-      product: "",
-      message: "",
+      name: "", email: "", phone: "", company: "", product: "", message: "",
     });
+    setCurrentProduct(null);
   };
 
   const handleTrialFormSubmit = (e) => {
     e.preventDefault();
-    console.log("Trial Form Submitted:", trialFormData);
-    // Here you would typically send the data to your backend
-    alert(
-      "Thank you for requesting a free trial! We'll contact you within 24 hours."
-    );
+    console.log("Trial Request Submitted:", trialFormData);
+    alert("Thank you for requesting a free trial! We'll contact you within 24 hours.");
     setShowTrialForm(false);
     setTrialFormData({
-      name: "",
-      email: "",
-      phone: "",
-      company: "",
-      employees: "",
-      interestedIn: "",
-      timeline: "",
+      name: "", email: "", phone: "", company: "", employees: "", interestedIn: "", timeline: "",
     });
   };
 
@@ -134,7 +81,6 @@ const Products = () => {
   ];
 
   const products = [
-    // ... (existing products array remains exactly the same)
     {
       id: 1,
       name: "CRM Pro",
@@ -310,13 +256,7 @@ const Products = () => {
     },
   ];
 
-  const filteredProducts =
-    activeCategory === "all"
-      ? products
-      : products.filter((product) => product.category === activeCategory);
-
   const testimonials = [
-    // ... (existing testimonials array remains exactly the same)
     {
       name: "John Smith",
       role: "CTO, TechCorp Inc.",
@@ -352,7 +292,6 @@ const Products = () => {
   ];
 
   const stats = [
-    // ... (existing stats array remains exactly the same)
     {
       value: "1,000+",
       label: "Active Customers",
@@ -382,6 +321,10 @@ const Products = () => {
       bg: "bg-yellow-100",
     },
   ];
+
+   const filteredProducts = activeCategory === "all"
+    ? products
+    : products.filter((p) => p.category === activeCategory);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50/50">
@@ -462,138 +405,91 @@ const Products = () => {
         </section>
 
         {/* Products Grid */}
-        <section className="py-16 md:py-20">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-              {filteredProducts.map((product) => (
-                <div
-                  key={product.id}
-                  onMouseEnter={() => setHoveredProduct(product.id)}
-                  onMouseLeave={() => setHoveredProduct(null)}
-                  className="group relative bg-white rounded-3xl border border-gray-200 overflow-hidden hover:border-primary-300 transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-2"
-                >
-                  {/* Badges */}
-                  <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                    {product.popular && (
-                      <div className="px-3 py-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg">
-                        Popular
-                      </div>
-                    )}
-                    {product.trending && (
-                      <div className="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full shadow-lg">
-                        Trending
-                      </div>
-                    )}
-                  </div>
+      <section className="py-16 md:py-20">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+            {filteredProducts.map((product) => (
+              <div
+                key={product.id}
+                className="group relative bg-white rounded-3xl border border-gray-200 overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-2"
+              >
+                {/* Badges */}
+                <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                  {product.popular && (
+                    <span className="px-3 py-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-bold rounded-full">Popular</span>
+                  )}
+                  {product.trending && (
+                    <span className="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full">Trending</span>
+                  )}
+                </div>
 
-                  {/* Header */}
-                  <div className="p-6 pb-0">
-                    <div className="flex items-start justify-between mb-6">
-                      <div
-                        className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${product.color} flex items-center justify-center shadow-lg`}
-                      >
-                        <product.icon className="text-white" size={28} />
-                      </div>
-                      <div className="text-right">
-                        <div className="text-3xl font-bold text-gray-900">
-                          {product.price}
-                        </div>
-                        <div className="text-gray-500 text-sm">
-                          {product.period}
-                        </div>
-                      </div>
+                {/* Main Content */}
+                <div className="p-6 relative z-0">
+                  {/* Icon + Price */}
+                  <div className="flex justify-between items-start mb-6">
+                    <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${product.color} flex items-center justify-center shadow-lg`}>
+                      <product.icon className="text-white" size={28} />
                     </div>
-
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-primary-700 transition-colors">
-                      {product.name}
-                    </h3>
-                    <p className="text-gray-600 mb-6 leading-relaxed">
-                      {product.description}
-                    </p>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold">{product.price}</div>
+                      <div className="text-gray-500 text-sm">{product.period}</div>
+                    </div>
                   </div>
+
+                  <h3 className="text-2xl font-bold mb-3">{product.name}</h3>
+                  <p className="text-gray-600 mb-6">{product.description}</p>
 
                   {/* Features */}
-                  <div className="p-6 pt-0">
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
-                        <CheckCircle className="text-primary-600" size={16} />
-                        Key Features
-                      </h4>
-                      <ul className="space-y-2">
-                        {product.features.slice(0, 4).map((feature, idx) => (
-                          <li
-                            key={idx}
-                            className="flex items-center text-gray-700 text-sm"
-                          >
-                            <div className="h-1.5 w-1.5 rounded-full bg-primary-500 mr-3"></div>
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
+                  <ul className="space-y-3 mb-6">
+                    {product.features.slice(0, 4).map((f, i) => (
+                      <li key={i} className="flex items-center text-sm text-gray-700">
+                        <CheckCircle className="text-primary-600 mr-3" size={16} />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
 
-                  {/* Stats & Actions */}
-                  <div className="p-6 pt-0">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center">
-                          <div className="flex text-yellow-400 mr-2">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                size={14}
-                                fill={
-                                  i < Math.floor(product.rating)
-                                    ? "currentColor"
-                                    : "none"
-                                }
-                              />
-                            ))}
-                          </div>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {product.rating}
-                          </span>
-                        </div>
-                        <div className="flex items-center text-gray-600 text-sm">
-                          <Users size={14} className="mr-1" />
-                          {product.users} users
-                        </div>
+                  {/* Rating + Users */}
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={16} fill={i < Math.floor(product.rating) ? "currentColor" : "none"} className="text-yellow-400" />
+                        ))}
+                        <span className="ml-1 font-semibold">{product.rating}</span>
+                      </div>
+                      <div className="text-sm text-gray-600 flex items-center">
+                        <Users size={16} className="mr-1" />
+                        {product.users}
                       </div>
                     </div>
-
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => handleGetStarted(product)}
-                        className="flex-1 group/btn bg-gradient-to-r from-primary-500 to-primary-600 text-white py-3 rounded-xl font-semibold hover:shadow-xl hover:shadow-primary-500/30 transition-all duration-300 hover:-translate-y-0.5 flex items-center justify-center gap-2"
-                      >
-                        <ShoppingCart size={18} />
-                        Get Started
-                        <ArrowRight
-                          className="group-hover/btn:translate-x-1 transition-transform"
-                          size={16}
-                        />
-                      </button>
-                      <button className="h-12 w-12 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors">
-                        <Eye size={18} />
-                      </button>
-                    </div>
                   </div>
 
-                  {/* Hover Overlay */}
-                  <div
-                    className={`absolute inset-0 bg-gradient-to-br ${product.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}
-                  ></div>
-
-                  {/* Bottom Gradient Border */}
-                  <div
-                    className={`h-1 bg-gradient-to-r ${product.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
-                  ></div>
+                  {/* Buttons - YEH SABSE SAFE HAI */}
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleGetStarted(product)}
+                      className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg transition-all"
+                    >
+                      <ShoppingCart size={18} />
+                      Get Started
+                      <ArrowRight size={16} />
+                    </button>
+                    <button className="w-12 h-12 border border-gray-300 rounded-xl flex items-center justify-center hover:bg-gray-50 transition">
+                      <Eye size={18} />
+                    </button>
+                  </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Hover Effects - Inhe button ke upar mat aane dena */}
+                <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${product.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
+                <div className={`pointer-events-none h-1 bg-gradient-to-r ${product.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+              </div>
+            ))}
           </div>
-        </section>
+        </div>
+      </section>
 
         {/* Testimonials */}
         <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
@@ -702,406 +598,24 @@ const Products = () => {
 
       <Footer />
 
-      {/* Product Inquiry Form Modal */}
-      {showProductForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="relative bg-white rounded-3xl w-full max-w-lg p-8 shadow-2xl">
-            <button
-              onClick={() => setShowProductForm(false)}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100"
-            >
-              <X size={20} />
-            </button>
+      {/* Product Inquiry Form */}
+      <ProductInquiryForm
+        showProductForm={showProductForm}
+        setShowProductForm={setShowProductForm}
+        currentProduct={currentProduct}
+        productFormData={productFormData}
+        setProductFormData={setProductFormData}
+        handleProductFormSubmit={handleProductFormSubmit}
+      />
 
-            <div className="text-center mb-6">
-              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center mx-auto mb-4">
-                <ShoppingCart className="text-white" size={28} />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                Request {currentProduct?.name}
-              </h3>
-              <p className="text-gray-600">
-                Fill in your details and our team will contact you shortly
-              </p>
-            </div>
-
-            <form onSubmit={handleProductFormSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name *
-                </label>
-                <div className="relative">
-                  <User
-                    className="absolute left-3 top-3 text-gray-400"
-                    size={18}
-                  />
-                  <input
-                    type="text"
-                    required
-                    value={productFormData.name}
-                    onChange={(e) =>
-                      setProductFormData({
-                        ...productFormData,
-                        name: e.target.value,
-                      })
-                    }
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="John Doe"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email *
-                  </label>
-                  <div className="relative">
-                    <Mail
-                      className="absolute left-3 top-3 text-gray-400"
-                      size={18}
-                    />
-                    <input
-                      type="email"
-                      required
-                      value={productFormData.email}
-                      onChange={(e) =>
-                        setProductFormData({
-                          ...productFormData,
-                          email: e.target.value,
-                        })
-                      }
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="john@company.com"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone *
-                  </label>
-                  <div className="relative">
-                    <Phone
-                      className="absolute left-3 top-3 text-gray-400"
-                      size={18}
-                    />
-                    <input
-                      type="tel"
-                      required
-                      value={productFormData.phone}
-                      onChange={(e) =>
-                        setProductFormData({
-                          ...productFormData,
-                          phone: e.target.value,
-                        })
-                      }
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="+1 (555) 123-4567"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Company Name *
-                </label>
-                <div className="relative">
-                  <Building
-                    className="absolute left-3 top-3 text-gray-400"
-                    size={18}
-                  />
-                  <input
-                    type="text"
-                    required
-                    value={productFormData.company}
-                    onChange={(e) =>
-                      setProductFormData({
-                        ...productFormData,
-                        company: e.target.value,
-                      })
-                    }
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="Your Company"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Product Interested In *
-                </label>
-                <input
-                  type="text"
-                  readOnly
-                  value={productFormData.product}
-                  className="w-full px-4 py-3 border border-gray-300 bg-gray-50 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Additional Message
-                </label>
-                <textarea
-                  value={productFormData.message}
-                  onChange={(e) =>
-                    setProductFormData({
-                      ...productFormData,
-                      message: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  rows="3"
-                  placeholder="Tell us about your requirements..."
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-xl hover:shadow-primary-500/30 transition-all duration-300"
-              >
-                Submit Request
-              </button>
-            </form>
-
-            <p className="text-center text-gray-500 text-sm mt-4">
-              By submitting, you agree to our Privacy Policy
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Free Trial Request Form Modal */}
-      {showTrialForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="relative bg-white rounded-3xl w-full max-w-lg p-8 shadow-2xl">
-            <button
-              onClick={() => setShowTrialForm(false)}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="text-center mb-6">
-              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-emerald-600 flex items-center justify-center mx-auto mb-4">
-                <Rocket className="text-white" size={28} />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                Start Your Free Trial
-              </h3>
-              <p className="text-gray-600">
-                14-day free trial • No credit card required
-              </p>
-            </div>
-
-            <form onSubmit={handleTrialFormSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
-                  </label>
-                  <div className="relative">
-                    <User
-                      className="absolute left-3 top-3 text-gray-400"
-                      size={18}
-                    />
-                    <input
-                      type="text"
-                      required
-                      value={trialFormData.name}
-                      onChange={(e) =>
-                        setTrialFormData({
-                          ...trialFormData,
-                          name: e.target.value,
-                        })
-                      }
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="John Doe"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Company *
-                  </label>
-                  <div className="relative">
-                    <Building
-                      className="absolute left-3 top-3 text-gray-400"
-                      size={18}
-                    />
-                    <input
-                      type="text"
-                      required
-                      value={trialFormData.company}
-                      onChange={(e) =>
-                        setTrialFormData({
-                          ...trialFormData,
-                          company: e.target.value,
-                        })
-                      }
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="Your Company"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email *
-                  </label>
-                  <div className="relative">
-                    <Mail
-                      className="absolute left-3 top-3 text-gray-400"
-                      size={18}
-                    />
-                    <input
-                      type="email"
-                      required
-                      value={trialFormData.email}
-                      onChange={(e) =>
-                        setTrialFormData({
-                          ...trialFormData,
-                          email: e.target.value,
-                        })
-                      }
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="abc@company.com"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone *
-                  </label>
-                  <div className="relative">
-                    <Phone
-                      className="absolute left-3 top-3 text-gray-400"
-                      size={18}
-                    />
-                    <input
-                      type="tel"
-                      required
-                      value={trialFormData.phone}
-                      onChange={(e) =>
-                        setTrialFormData({
-                          ...trialFormData,
-                          phone: e.target.value,
-                        })
-                      }
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="+1 (555) 123-4567"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Company Size *
-                  </label>
-                  <select
-                    required
-                    value={trialFormData.employees}
-                    onChange={(e) =>
-                      setTrialFormData({
-                        ...trialFormData,
-                        employees: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  >
-                    <option value="">Select</option>
-                    <option value="1-10">1-10 employees</option>
-                    <option value="11-50">11-25 employees</option>
-                    <option value="51-200">50-75 employees</option>
-                    <option value="201-500">75-100 employees</option>
-                    <option value="501+">100+ employees</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Timeline *
-                  </label>
-                  <select
-                    required
-                    value={trialFormData.timeline}
-                    onChange={(e) =>
-                      setTrialFormData({
-                        ...trialFormData,
-                        timeline: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  >
-                    <option value="">Select</option>
-                    <option value="immediate">Immediate</option>
-                    <option value="1-month">Within 1 month</option>
-                    <option value="3-months">Within 3 months</option>
-                    <option value="6-months">Within 6 months</option>
-                    <option value="exploring">Just exploring</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Interested In *
-                </label>
-                <select
-                  required
-                  value={trialFormData.interestedIn}
-                  onChange={(e) =>
-                    setTrialFormData({
-                      ...trialFormData,
-                      interestedIn: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="">Select Product</option>
-                  <option value="CRM Pro">CRM Pro</option>
-                  <option value="Inventory & Production ERP">
-                    Inventory & Production ERP
-                  </option>
-                  <option value="School ERP">School ERP</option>
-                  <option value="Analytics Dashboard">
-                    Analytics Dashboard
-                  </option>
-                  <option value="SecureVault">SecureVault</option>
-                  <option value="ProjectFlow">ProjectFlow</option>
-                  <option value="MarketInsight">MarketInsight</option>
-                  <option value="multiple">Multiple Products</option>
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-xl hover:shadow-green-500/30 transition-all duration-300"
-              >
-                Start Free Trial
-              </button>
-            </form>
-
-            <div className="text-center mt-4">
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                <Shield size={14} />
-                <span>Your data is secure and private</span>
-              </div>
-              <p className="text-gray-500 text-sm mt-2">
-                No commitment • Cancel anytime • Full support included
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Free Trial Form */}
+      <FreeTrialForm
+        showTrialForm={showTrialForm}
+        setShowTrialForm={setShowTrialForm}
+        trialFormData={trialFormData}
+        setTrialFormData={setTrialFormData}
+        handleTrialFormSubmit={handleTrialFormSubmit}
+      />
     </div>
   );
 };
