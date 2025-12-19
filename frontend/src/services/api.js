@@ -1,7 +1,7 @@
 import axios from 'axios';
 import React from 'react'; 
 
-// ==================== CONFIGURATION ====================
+//  CONFIGURATION 
 const API_BASE_URL = import.meta.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 // Create axios instance for public APIs (no auth required)
@@ -22,7 +22,7 @@ const adminApi = axios.create({
   },
 });
 
-// ==================== AUTH INTERCEPTORS ====================
+//  AUTH INTERCEPTORS 
 // For admin API, add token to requests
 adminApi.interceptors.request.use(
   (config) => {
@@ -48,7 +48,7 @@ adminApi.interceptors.response.use(
   }
 );
 
-// ==================== PUBLIC APIs (No Login Required) ====================
+//  PUBLIC APIs (No Login Required) 
 const PublicAPI = {
   /**
    * Submit a job application (NO login required)
@@ -114,18 +114,49 @@ const PublicAPI = {
   },
 
   /**
-   * Contact form submission
-   * @param {Object} contactData - Contact form data
-   * @returns {Promise} - API response
-   */
-  submitContactForm: async (contactData) => {
-    try {
-      const response = await publicApi.post('/contact', contactData);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to submit contact form' };
+ * Contact form submission
+ * @param {Object} contactData - Contact form data
+ * @returns {Promise} - API response
+ */
+submitContactForm: async (contactData) => {
+  try {
+    const response = await publicApi.post('/contact', contactData);
+    return response.data;
+  } catch (error) {
+    // Improved error handling – safe even if response body is empty or not JSON
+    let errorMessage = 'Failed to send message. Please try again later.';
+
+    if (error.response) {
+      // Server responded with error status (400, 422, 429, 500, etc.)
+      const status = error.response.status;
+
+      if (status === 429) {
+        errorMessage = 'Too many messages sent. Please try again tomorrow.';
+      } else if (status >= 500) {
+        errorMessage = 'Server error. Our team has been notified.';
+      } else {
+        // Try to extract detail from FastAPI error response
+        try {
+          const text = await error.response.data.text?.() || error.response.data;
+          if (typeof text === 'string' && text.trim()) {
+            const parsed = JSON.parse(text);
+            errorMessage = parsed.detail || parsed.message || errorMessage;
+          }
+        } catch (parseError) {
+          // If JSON parse fails, use status text
+          errorMessage = error.response.statusText || errorMessage;
+        }
+      }
+    } else if (error.request) {
+      // Network error (no response)
+      errorMessage = 'Network error. Please check your internet connection.';
     }
-  },
+
+    const err = new Error(errorMessage);
+    err.status = error.response?.status;
+    throw err;
+  }
+},
 
   /**
    * Subscribe to newsletter
@@ -165,9 +196,40 @@ const PublicAPI = {
       throw new Error(errorMessage);
     }
   },
+
+  /**
+   * Submit product inquiry
+   * @param {Object} inquiryData - Product inquiry form data
+   * @returns {Promise} - API response
+   */
+  submitProductInquiry: async (inquiryData) => {
+    try {
+      const response = await publicApi.post('/inquiries/submit', inquiryData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to submit product inquiry' };
+    }
+  },
+
+  /**
+   * Request product trial/demo
+   * @param {Object} trialData - Trial request form data
+   * @returns {Promise} - API response
+   */
+  submitFreeTrial: async (trialData) => {
+  try {
+    const response = await publicApi.post('/trial', trialData);  // ← Yahi endpoint hai backend mein
+    return response.data;
+  } catch (error) {
+    const msg = error.response?.data?.detail || 
+                error.response?.data?.message || 
+                'Failed to submit free trial request';
+    throw new Error(msg);
+  }
+},
 };
 
-// ==================== ADMIN APIs (Login Required) ====================
+//  ADMIN APIs (Login Required) 
 const AdminAPI = {
   /**
    * Admin login
@@ -361,11 +423,68 @@ const AdminAPI = {
       throw error.response?.data || { message: 'Failed to update project request' };
     }
   },
+
+  /**
+   * Get all product inquiries (admin only)
+   * @param {Object} params - Query parameters
+   * @returns {Promise} - Product inquiries list
+   */
+  getProductInquiries: async (params = {}) => {
+    try {
+      const response = await adminApi.get('/products/inquiries', { params });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch product inquiries' };
+    }
+  },
+
+  /**
+   * Get all trial requests (admin only)
+   * @param {Object} params - Query parameters
+   * @returns {Promise} - Trial requests list
+   */
+  getTrialRequests: async (params = {}) => {
+    try {
+      const response = await adminApi.get('/products/trials', { params });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch trial requests' };
+    }
+  },
+
+  /**
+   * Update product inquiry status (admin only)
+   * @param {string} inquiryId - Inquiry ID
+   * @param {Object} updateData - Update data
+   * @returns {Promise} - Updated inquiry
+   */
+  updateProductInquiry: async (inquiryId, updateData) => {
+    try {
+      const response = await adminApi.patch(`/products/inquiries/${inquiryId}`, updateData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update product inquiry' };
+    }
+  },
+
+  /**
+   * Update trial request status (admin only)
+   * @param {string} trialId - Trial ID
+   * @param {Object} updateData - Update data
+   * @returns {Promise} - Updated trial request
+   */
+  updateTrialRequest: async (trialId, updateData) => {
+    try {
+      const response = await adminApi.patch(`/products/trials/${trialId}`, updateData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update trial request' };
+    }
+  },
 };
 
-// ==================== UTILITY FUNCTIONS ====================
+//  UTILITY FUNCTIONS 
 const Utils = {
-  // ... (sab utils same hi hain, koi change nahi)
   formatFileSize: (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -499,7 +618,7 @@ const Utils = {
   }),
 };
 
-// ==================== HOOKS (For React Components) ====================
+//  HOOKS (For React Components) 
 const Hooks = {
   useJobOpenings: () => {
     const [openings, setOpenings] = React.useState([]);
@@ -551,7 +670,7 @@ const Hooks = {
   },
 };
 
-// ==================== EXPORT ====================
+//  EXPORT 
 const API = {
   ...PublicAPI,
   ...AdminAPI,
@@ -572,65 +691,3 @@ const API = {
 };
 
 export default API;
-
-// ==================== USAGE EXAMPLES ====================
-/*
-// Example 1: Submit job application
-const submitJobApplication = async () => {
-  const formData = {
-    full_name: 'John Doe',
-    email: 'john@example.com',
-    phone: '1234567890',
-    job_title: 'Senior Developer',
-    job_type: 'full_time',
-  };
-  
-  const resumeFile = document.getElementById('resume').files[0];
-  
-  try {
-    const result = await API.submitApplication(API.Utils.createFormData(formData, resumeFile));
-    console.log('Application submitted:', result);
-  } catch (error) {
-    console.error('Error:', error);
-  }
-};
-
-// Example 2: Admin login and fetch applications
-const adminWorkflow = async () => {
-  // Login
-  try {
-    await API.login('admin@example.com', 'password');
-    
-    // Fetch applications
-    const applications = await API.getApplications({ limit: 10 });
-    console.log('Applications:', applications);
-    
-    // Get statistics
-    const stats = await API.getApplicationStats();
-    console.log('Statistics:', stats);
-    
-  } catch (error) {
-    console.error('Admin error:', error);
-  }
-};
-
-// Example 3: Check application status
-const checkStatus = async () => {
-  try {
-    const status = await API.checkApplicationStatus('john@example.com', 'APP-20241214-ABC123');
-    console.log('Application status:', status);
-  } catch (error) {
-    console.error('Status check error:', error);
-  }
-};
-
-// Example 4: Download resume
-const downloadResume = async (applicationId) => {
-  try {
-    const blob = await API.downloadResume(applicationId);
-    API.Utils.downloadFile(blob, `resume-${applicationId}.pdf`);
-  } catch (error) {
-    console.error('Download error:', error);
-  }
-};
-*/

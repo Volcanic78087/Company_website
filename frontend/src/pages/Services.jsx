@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/public/Header";
 import Footer from "../components/public/Footer";
 import ProjectForm from "../components/common/ProjectForm";
-
 import {
   Code,
   Palette,

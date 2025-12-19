@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Header from "../components/public/Header";
 import Footer from "../components/public/Footer";
+import ProjectForm from "../components/common/ProjectForm";
 import {
   Users,
   Target,
@@ -28,11 +29,13 @@ import {
   CheckCircle,
   Cpu,
   Building,
+  ArrowRight,
 } from "lucide-react";
 
 const About = () => {
   const [activeTab, setActiveTab] = useState("mission");
   const [hoveredMember, setHoveredMember] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   const tabs = [
     { id: "mission", label: "Our Mission", icon: Target },
@@ -148,6 +151,14 @@ const About = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50/50">
       <Header />
+      <ProjectForm isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} />
+        
+        {/* Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-gradient-to-r from-primary-500/10 to-primary-600/10 blur-3xl"></div>
+          <div className="absolute bottom-40 -left-40 h-60 w-60 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 blur-3xl"></div>
+          <div className="absolute top-1/3 right-1/4 h-40 w-40 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 blur-3xl"></div>
+        </div>
 
       <main>
         {/* Hero Section */}
@@ -364,13 +375,16 @@ const About = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="group px-8 py-3.5 bg-white text-primary-600 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2">
-                Start Your Project
-                <ChevronRight
-                  className="group-hover:translate-x-1 transition-transform"
-                  size={18}
-                />
-              </button>
+              <button
+                    onClick={() => setIsFormOpen(true)}
+                    className="group px-8 py-3.5 bg-white text-primary-600 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2"
+                  >
+                    Start Your Project
+                    <ArrowRight
+                      className="group-hover:translate-x-1 transition-transform"
+                      size={18}
+                    />
+                  </button>
 
               <button className="px-8 py-3.5 border-2 border-white/30 text-white rounded-xl font-semibold hover:bg-white/10 transition-all duration-300 hover:scale-105">
                 View Case Studies
@@ -381,6 +395,7 @@ const About = () => {
       </main>
 
       <Footer />
+    
     </div>
   );
 };

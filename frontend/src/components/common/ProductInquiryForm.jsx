@@ -1,4 +1,5 @@
 import { X, ShoppingCart, User, Mail, Phone, Building } from "lucide-react";
+import API from '../../services/api';
 
 const ProductInquiryForm = ({
   showProductForm,
@@ -6,8 +7,44 @@ const ProductInquiryForm = ({
   currentProduct,
   productFormData,
   setProductFormData,
-  handleProductFormSubmit,
+  handleProductFormSubmit: propHandleSubmit, // rename to avoid conflict
 }) => {
+  // Local submit handler jo API call karta hai aur phir parent ke handler ko call karta hai (optional)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      // API call
+      const response = await API.submitProductInquiry(productFormData);
+      console.log('Product inquiry submitted:', response);
+
+      // Success feedback
+      alert('Product inquiry submitted successfully! Our team will contact you shortly.');
+
+      // Reset form
+      setProductFormData({
+        name: '',
+        email: '',
+        phone: '',
+        company: '',
+        product: currentProduct?.name || '',
+        message: ''
+      });
+
+      // Close modal
+      setShowProductForm(false);
+
+      // Agar parent mein koi extra logic hai (e.g., analytics), toh usko bhi call kar sakte hain
+      if (propHandleSubmit) {
+        propHandleSubmit(e); // optional: parent ka original handler call karo
+      }
+
+    } catch (error) {
+      console.error('Error submitting product inquiry:', error);
+      alert(error.message || 'Failed to submit product inquiry. Please try again.');
+    }
+  };
+
   return (
     showProductForm && (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -31,26 +68,19 @@ const ProductInquiryForm = ({
             </p>
           </div>
 
-          <form onSubmit={handleProductFormSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Baaki form fields same as before */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Full Name *
               </label>
               <div className="relative">
-                <User
-                  className="absolute left-3 top-3 text-gray-400"
-                  size={18}
-                />
+                <User className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input
                   type="text"
                   required
                   value={productFormData.name}
-                  onChange={(e) =>
-                    setProductFormData({
-                      ...productFormData,
-                      name: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="John Doe"
                 />
@@ -59,24 +89,14 @@ const ProductInquiryForm = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
                 <div className="relative">
-                  <Mail
-                    className="absolute left-3 top-3 text-gray-400"
-                    size={18}
-                  />
+                  <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
                   <input
                     type="email"
                     required
                     value={productFormData.email}
-                    onChange={(e) =>
-                      setProductFormData({
-                        ...productFormData,
-                        email: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setProductFormData({ ...productFormData, email: e.target.value })}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="john@company.com"
                   />
@@ -84,24 +104,14 @@ const ProductInquiryForm = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
                 <div className="relative">
-                  <Phone
-                    className="absolute left-3 top-3 text-gray-400"
-                    size={18}
-                  />
+                  <Phone className="absolute left-3 top-3 text-gray-400" size={18} />
                   <input
                     type="tel"
                     required
                     value={productFormData.phone}
-                    onChange={(e) =>
-                      setProductFormData({
-                        ...productFormData,
-                        phone: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setProductFormData({ ...productFormData, phone: e.target.value })}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="+1 (555) 123-4567"
                   />
@@ -110,24 +120,14 @@ const ProductInquiryForm = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Company Name *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Company Name *</label>
               <div className="relative">
-                <Building
-                  className="absolute left-3 top-3 text-gray-400"
-                  size={18}
-                />
+                <Building className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input
                   type="text"
                   required
                   value={productFormData.company}
-                  onChange={(e) =>
-                    setProductFormData({
-                      ...productFormData,
-                      company: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setProductFormData({ ...productFormData, company: e.target.value })}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="Your Company"
                 />
@@ -152,12 +152,7 @@ const ProductInquiryForm = ({
               </label>
               <textarea
                 value={productFormData.message}
-                onChange={(e) =>
-                  setProductFormData({
-                    ...productFormData,
-                    message: e.target.value,
-                  })
-                }
+                onChange={(e) => setProductFormData({ ...productFormData, message: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 rows="3"
                 placeholder="Tell us about your requirements..."

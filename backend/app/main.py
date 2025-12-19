@@ -12,6 +12,7 @@ from app.api.routes import router
 from app.database import engine
 from app.models.job_application import Base
 from app.models.project_request import Base
+from app.models.product_inquiry import Base
 
 app = FastAPI(
     title=settings.APP_NAME,

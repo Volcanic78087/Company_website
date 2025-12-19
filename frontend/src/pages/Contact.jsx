@@ -24,6 +24,7 @@ import {
   Star,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import API from "../services/api";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -99,35 +100,49 @@ const Contact = () => {
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      toast.success(
-        <div className="flex items-center gap-3">
-          <CheckCircle className="text-green-500" size={24} />
-          <div>
-            <div className="font-bold">Message sent successfully!</div>
-            <div className="text-sm">We'll contact you within 24 hours.</div>
-          </div>
+  try {
+    await API.submitContactForm(formData);
+
+    toast.success(
+      <div className="flex items-center gap-3">
+        <CheckCircle className="text-green-500" size={24} />
+        <div>
+          <div className="font-bold">Message sent successfully!</div>
+          <div className="text-sm">We'll get back to you within 24 hours.</div>
         </div>
-      );
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        subject: "",
-        message: "",
-      });
-      setLoading(false);
-    }, 1500);
-  };
+      </div>
+    );
+
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      subject: "",
+      message: "",
+    });
+  } catch (err) {
+    toast.error(
+      <div className="flex items-center gap-3">
+        <AlertCircle className="text-red-500" size={24} />
+        <div>
+          <div className="font-bold">Failed to send message</div>
+          <div className="text-sm">{err.message}</div>
+        </div>
+      </div>
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50/50">
       <Header />
+      
 
       <main>
         {/* Hero Section */}

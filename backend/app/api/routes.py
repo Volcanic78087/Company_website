@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, status
 from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.orm import Session
-from typing import List, Optional,Dict
+from typing import List, Optional, Dict
 import os
 import uuid
 from datetime import datetime, timedelta
 import traceback
 import json
+import logging
 
 from app.database import get_db
 from app.models.job_application import JobApplication, JobType, ApplicationStatus
@@ -30,11 +31,17 @@ from app.core.utils import (
 from sqlalchemy import func
 from app.models.project_request import ProjectRequest, ProjectStatus
 from app.schemas.project_request import ProjectRequestCreate, ProjectRequestResponse
+from app.schemas.product_inquiry import ProductInquiryCreate, ProductInquiryUpdate, ProductInquiryResponse, FreeTrialCreate, FreeTrialUpdate, FreeTrialResponse
+from app.models.product_inquiry import ProductInquiry, FreeTrialRequest
+from app.schemas.contact import ContactResponse,ContactCreate
+from app.models.contact import ContactInquiry,ContactSubject
 
+# Rebuild models to ensure they're up-to-date
 ProjectRequestResponse.model_rebuild(force=True)
 
 router = APIRouter()
 
+# ==================== EXISTING JOB APPLICATION ENDPOINTS ====================
 @router.post("/apply", response_model=JobApplicationResponse, status_code=status.HTTP_201_CREATED)
 async def submit_application(
     request: Request,
@@ -401,6 +408,7 @@ async def get_departments(db: Session = Depends(get_db)):
         return []
 
 
+# ==================== EXISTING PROJECT REQUEST ENDPOINTS ====================
 @router.post("/projects/submit", response_model=ProjectRequestResponse, status_code=status.HTTP_201_CREATED)
 async def submit_project_request(
     request: Request,
@@ -596,3 +604,419 @@ async def update_project_status(
     db.refresh(project)
     
     return {"message": "Project status updated successfully", "project": project}
+
+
+# ==================== NEW PRODUCT INQUIRY ENDPOINTS ====================
+
+from fastapi import Body  # Add this if not already imported
+
+@router.post("/inquiries/submit", response_model=ProductInquiryResponse, status_code=status.HTTP_201_CREATED)
+async def submit_product_inquiry(
+    request: Request,
+    inquiry_data: ProductInquiryCreate,  # Use Pydantic schema directly
+    db: Session = Depends(get_db)
+):
+    """
+    Submit a product inquiry - Now accepts JSON body (matches frontend)
+    """
+    try:
+        data = inquiry_data.dict()
+        print(f"📦 Received product inquiry for: {data['product']}")
+        print(f"👤 From: {data['name']} ({data['email']}) | Company: {data['company']}")
+        
+        # Optional: Prevent duplicates
+        yesterday = datetime.now() - timedelta(days=1)
+        existing = db.query(ProductInquiry).filter(
+            ProductInquiry.email == data['email'],
+            ProductInquiry.product == data['product'],
+            ProductInquiry.created_at >= yesterday
+        ).first()
+        
+        if existing:
+            raise HTTPException(
+                status_code=429,
+                detail="You have already submitted an inquiry for this product recently."
+            )
+        
+        # Add extra fields
+        data.update({
+            "ip_address": get_client_ip(request),
+            "user_agent": request.headers.get("user-agent", ""),
+            "status": "pending",
+            "priority": "medium"
+        })
+        
+        db_inquiry = ProductInquiry(**data)
+        db.add(db_inquiry)
+        db.commit()
+        db.refresh(db_inquiry)
+        
+        print(f"✅ Product inquiry submitted: ID {db_inquiry.id}")
+        
+        return db_inquiry
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Error: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Failed to submit inquiry")
+
+@router.get("/inquiries", response_model=List[ProductInquiryResponse])
+async def get_product_inquiries(
+    skip: int = 0,
+    limit: int = 100,
+    status: Optional[str] = None,
+    product: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get all product inquiries with optional filters
+    """
+    query = db.query(ProductInquiry)
+    
+    if status:
+        query = query.filter(ProductInquiry.status == status)
+    if product:
+        query = query.filter(ProductInquiry.product.ilike(f"%{product}%"))
+    
+    inquiries = query.order_by(ProductInquiry.created_at.desc()).offset(skip).limit(limit).all()
+    return inquiries
+
+@router.get("/inquiries/{inquiry_id}", response_model=ProductInquiryResponse)
+async def get_product_inquiry(
+    inquiry_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Get specific inquiry by ID
+    """
+    inquiry = db.query(ProductInquiry).filter(ProductInquiry.id == inquiry_id).first()
+    
+    if not inquiry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product inquiry not found"
+        )
+    
+    return inquiry
+
+@router.patch("/inquiries/{inquiry_id}", response_model=ProductInquiryResponse)
+async def update_product_inquiry(
+    inquiry_id: int,
+    inquiry_update: ProductInquiryUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Update product inquiry status
+    """
+    inquiry = db.query(ProductInquiry).filter(ProductInquiry.id == inquiry_id).first()
+    
+    if not inquiry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product inquiry not found"
+        )
+    
+    # Update fields
+    update_dict = inquiry_update.dict(exclude_unset=True)
+    for field, value in update_dict.items():
+        setattr(inquiry, field, value)
+    
+    inquiry.updated_at = datetime.now()
+    db.commit()
+    db.refresh(inquiry)
+    
+    return inquiry
+
+@router.delete("/inquiries/{inquiry_id}")
+async def delete_product_inquiry(
+    inquiry_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Delete product inquiry
+    """
+    inquiry = db.query(ProductInquiry).filter(ProductInquiry.id == inquiry_id).first()
+    
+    if not inquiry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product inquiry not found"
+        )
+    
+    db.delete(inquiry)
+    db.commit()
+    
+    return {"message": "Product inquiry deleted successfully"}
+
+# ==================== FREE TRIAL ENDPOINTS (UPDATED) ====================
+
+@router.post("/trial", response_model=FreeTrialResponse, status_code=status.HTTP_201_CREATED)
+async def submit_free_trial_request(
+    request: Request,
+    trial: FreeTrialCreate, 
+    db: Session = Depends(get_db)
+):
+    """
+    Submit a free trial request - Accepts JSON body
+    """
+    try:
+        data = trial.dict()
+        print(f"🎯 Received free trial request from: {data['name']} ({data['email']})")
+        print(f"🏢 Company: {data['company']} | Interested in: {data.get('interested_in')}")
+        
+        # Optional: Duplicate check
+        yesterday = datetime.now() - timedelta(days=1)
+        existing = db.query(FreeTrialRequest).filter(
+            FreeTrialRequest.email == data['email'],
+            FreeTrialRequest.created_at >= yesterday
+        ).first()
+        
+        if existing:
+            raise HTTPException(
+                status_code=429,
+                detail="You have already requested a free trial recently."
+            )
+        
+        # Add metadata
+        data.update({
+            "status": "pending",
+            "ip_address":  get_client_ip(request),
+            "user_agent": request.headers.get("user-agent", "")
+        })
+        
+        db_trial = FreeTrialRequest(
+            name=data['name'],
+            email=data['email'],
+            phone=data['phone'],
+            company=data['company'],
+            employees=data.get('employees'),
+            interested_in=data.get('interested_in'),
+            timeline=data.get('timeline'),
+            status="pending",
+            ip_address=data['ip_address'],
+            user_agent=data['user_agent'],
+        )
+        db.add(db_trial)
+        db.commit()
+        db.refresh(db_trial)
+        
+        print(f"✅ Free trial request submitted: ID {db_trial.id}")
+        
+        return db_trial
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Error submitting trial: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Internal server error")
+        
+# ==================== STATISTICS ENDPOINTS ====================
+
+@router.get("/stats/inquiries")
+async def get_product_inquiry_stats(db: Session = Depends(get_db)):
+    """
+    Get product inquiry statistics
+    """
+    from sqlalchemy import func
+    
+    try:
+        # Total count
+        total = db.query(func.count(ProductInquiry.id)).scalar()
+        
+        # Count by status
+        by_status = db.query(
+            ProductInquiry.status,
+            func.count(ProductInquiry.id)
+        ).group_by(ProductInquiry.status).all()
+        
+        # Count by product
+        by_product = db.query(
+            ProductInquiry.product,
+            func.count(ProductInquiry.id)
+        ).group_by(ProductInquiry.product).all()
+        
+        # Recent inquiries (last 7 days)
+        seven_days_ago = datetime.now() - timedelta(days=7)
+        recent = db.query(func.count(ProductInquiry.id)).filter(
+            ProductInquiry.created_at >= seven_days_ago
+        ).scalar()
+        
+        return {
+            "total": total,
+            "by_status": dict(by_status),
+            "by_product": dict(by_product),
+            "recent_7_days": recent
+        }
+        
+    except Exception as e:
+        print(f"❌ Error fetching inquiry statistics: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching inquiry statistics: {str(e)}"
+        )
+
+@router.get("/stats/trials")
+async def get_free_trial_stats(db: Session = Depends(get_db)):
+    """
+    Get free trial statistics
+    """
+    from sqlalchemy import func
+    
+    try:
+        # Total count
+        total = db.query(func.count(FreeTrialRequest.id)).scalar()
+        
+        # Count by status
+        by_status = db.query(
+            FreeTrialRequest.status,
+            func.count(FreeTrialRequest.id)
+        ).group_by(FreeTrialRequest.status).all()
+        
+        # Count by company size (employees)
+        by_employees = db.query(
+            FreeTrialRequest.employees,
+            func.count(FreeTrialRequest.id)
+        ).filter(FreeTrialRequest.employees.isnot(None)).group_by(FreeTrialRequest.employees).all()
+        
+        # Recent trials (last 7 days)
+        seven_days_ago = datetime.now() - timedelta(days=7)
+        recent = db.query(func.count(FreeTrialRequest.id)).filter(
+            FreeTrialRequest.created_at >= seven_days_ago
+        ).scalar()
+        
+        return {
+            "total": total,
+            "by_status": dict(by_status),
+            "by_employees": dict(by_employees),
+            "recent_7_days": recent
+        }
+        
+    except Exception as e:
+        print(f"❌ Error fetching trial statistics: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching trial statistics: {str(e)}"
+        )
+
+# ==================== COMBINED STATISTICS ====================
+
+@router.get("/stats/overview")
+async def get_combined_stats(db: Session = Depends(get_db)):
+    """
+    Get combined statistics for all modules
+    """
+    from sqlalchemy import func
+    
+    try:
+        # Job Applications stats
+        job_total = db.query(func.count(JobApplication.id)).filter(
+            JobApplication.is_active == True
+        ).scalar()
+        
+        job_pending = db.query(func.count(JobApplication.id)).filter(
+            JobApplication.status == ApplicationStatus.PENDING,
+            JobApplication.is_active == True
+        ).scalar()
+        
+        # Project Requests stats
+        project_total = db.query(func.count(ProjectRequest.id)).scalar()
+        project_new = db.query(func.count(ProjectRequest.id)).filter(
+            ProjectRequest.status == ProjectStatus.NEW.value
+        ).scalar()
+        
+        # Product Inquiries stats
+        inquiry_total = db.query(func.count(ProductInquiry.id)).scalar()
+        inquiry_pending = db.query(func.count(ProductInquiry.id)).filter(
+            ProductInquiry.status == "pending"
+        ).scalar()
+        
+        # Free Trial stats
+        trial_total = db.query(func.count(FreeTrialRequest.id)).scalar()
+        trial_pending = db.query(func.count(FreeTrialRequest.id)).filter(
+            FreeTrialRequest.status == "pending"
+        ).scalar()
+        
+        return {
+            "job_applications": {
+                "total": job_total,
+                "pending": job_pending
+            },
+            "project_requests": {
+                "total": project_total,
+                "new": project_new
+            },
+            "product_inquiries": {
+                "total": inquiry_total,
+                "pending": inquiry_pending
+            },
+            "free_trials": {
+                "total": trial_total,
+                "pending": trial_pending
+            },
+            "grand_total": job_total + project_total + inquiry_total + trial_total,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"❌ Error fetching combined statistics: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching combined statistics: {str(e)}"
+        )
+
+#   Contact routes
+@router.post("/contact", response_model=ContactResponse, status_code=status.HTTP_201_CREATED)
+async def submit_contact_form(
+    request: Request,
+    contact_data: ContactCreate,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Get client IP and User-Agent (for analytics/spam detection)
+        client_ip = request.client.host
+        user_agent = request.headers.get("user-agent")
+
+        # Rate limiting by email + IP (optional but recommended)
+        one_day_ago = datetime.utcnow() - timedelta(days=1)
+        recent_count = db.query(ContactInquiry).filter(
+            ContactInquiry.email == contact_data.email,
+            ContactInquiry.ip_address == client_ip,
+            ContactInquiry.created_at >= one_day_ago
+        ).count()
+
+        if recent_count >= 5:  # Max 5 messages per day per email+IP
+            raise HTTPException(
+                status_code=429,
+                detail="Too many requests. Please try again tomorrow."
+            )
+
+        # Create new inquiry
+        new_inquiry = ContactInquiry(
+            name=contact_data.name,
+            email=contact_data.email,
+            phone=contact_data.phone,
+            subject=ContactSubject(contact_data.subject),
+            message=contact_data.message,
+            ip_address=client_ip,
+            user_agent=user_agent,
+        )
+
+        db.add(new_inquiry)
+        db.commit()
+        db.refresh(new_inquiry)
+
+        return new_inquiry
+
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logging.error(f"Contact form error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to send message. Please try again later."
+        )

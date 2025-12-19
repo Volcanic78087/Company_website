@@ -11,6 +11,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from app.database import engine
 from app.models.job_application import Base
 from app.models.project_request import Base
+from app.models.product_inquiry import Base
+from app.models.contact import Base
 from app.core.config import settings
 
 def init_database():
